@@ -126,12 +126,13 @@ type GuestAccess struct {
 func (dst *GuestAccess) UnmarshalJSON(b []byte) error {
 	type Alias GuestAccess
 	aux := &struct {
-		ExpireNumber               *types.Number `json:"expire_number"`
-		ExpireUnit                 *types.Number `json:"expire_unit"`
-		PortalCustomizedBoxOpacity *types.Number `json:"portal_customized_box_opacity"`
-		PortalCustomizedBoxRADIUS  *types.Number `json:"portal_customized_box_radius"`
-		PortalCustomizedLogoSize   *types.Number `json:"portal_customized_logo_size"`
-		RADIUSDisconnectPort       *types.Number `json:"radius_disconnect_port"`
+		Expire                     json.RawMessage `json:"expire"`
+		ExpireNumber               *types.Number   `json:"expire_number"`
+		ExpireUnit                 *types.Number   `json:"expire_unit"`
+		PortalCustomizedBoxOpacity *types.Number   `json:"portal_customized_box_opacity"`
+		PortalCustomizedBoxRADIUS  *types.Number   `json:"portal_customized_box_radius"`
+		PortalCustomizedLogoSize   *types.Number   `json:"portal_customized_logo_size"`
+		RADIUSDisconnectPort       *types.Number   `json:"radius_disconnect_port"`
 
 		*Alias
 	}{
@@ -146,6 +147,19 @@ func (dst *GuestAccess) UnmarshalJSON(b []byte) error {
 	err := json.Unmarshal(b, &aux)
 	if err != nil {
 		return fmt.Errorf("unable to unmarshal alias: %w", err)
+	}
+	// `expire` is stored as a JSON number (minutes) for fixed durations or as
+	// the literal string "custom" — coerce both into the declared string field.
+	if len(aux.Expire) > 0 {
+		var s string
+		if err := json.Unmarshal(aux.Expire, &s); err == nil {
+			dst.Expire = s
+		} else {
+			var n json.Number
+			if err := json.Unmarshal(aux.Expire, &n); err == nil {
+				dst.Expire = string(n)
+			}
+		}
 	}
 	if aux.ExpireNumber != nil {
 		if val, err := aux.ExpireNumber.Int64(); err == nil {
