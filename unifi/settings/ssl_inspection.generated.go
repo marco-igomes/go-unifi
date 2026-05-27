@@ -24,7 +24,8 @@ var (
 type SslInspection struct {
 	BaseSetting
 
-	State string `json:"state,omitempty"` // off|simple|advanced
+	IdentityCertificateAllUsers bool   `json:"identity_certificate_all_users"`
+	State                       string `json:"state,omitempty"` // off|simple|advanced
 }
 
 func (dst *SslInspection) UnmarshalJSON(b []byte) error {
