@@ -132,6 +132,19 @@ type FieldInfo struct {
 	Fields              map[string]*FieldInfo
 	CustomUnmarshalType string
 	CustomUnmarshalFunc string
+
+	// NoZeroFallback drops the "empty string → &0" fallback in the pointer
+	// numeric typecast, leaving the field nil so omitempty omits it on
+	// round-trip. Used where the controller rejects 0 (constrained ranges).
+	NoZeroFallback bool
+	// StringFromNumber unmarshals a JSON value that may be a number or a
+	// string into a string field: the aux field is *types.Number, numeric
+	// values are formatted to string, and non-empty string values (e.g.
+	// "auto") are preserved.
+	StringFromNumber bool
+	// UnmarshalComment is emitted as a comment above the field's typecast
+	// block in the generated UnmarshalJSON.
+	UnmarshalComment string
 }
 
 func NewResource(structName string, resourcePath string) *ResourceInfo {
@@ -253,6 +266,153 @@ func cleanName(name string, reps []replacement) string {
 	}
 
 	return name
+}
+
+// The ace.jar schema the SDK is generated from omits some fields the
+// controller actually serves, and some whole nested types. Declaring them
+// here — merged in after schema extraction in main() via applyExtraFields —
+// keeps every such patch regen-safe: a clean regen reproduces them instead of
+// silently reverting a hand-edit to a *.generated.go file.
+
+func strField(name, jsonName, comment string, omitEmpty bool) *FieldInfo {
+	return NewFieldInfo(name, jsonName, fields.String, comment, omitEmpty, false, false, "")
+}
+
+func boolField(name, jsonName string) *FieldInfo {
+	return NewFieldInfo(name, jsonName, fields.Bool, "", false, false, false, "")
+}
+
+// strSliceField builds a []string field; omitEmpty controls the json tag.
+func strSliceField(name, jsonName, comment string, omitEmpty bool) *FieldInfo {
+	return NewFieldInfo(name, jsonName, fields.String, comment, omitEmpty, true, false, "")
+}
+
+// structSliceField builds a []<elemType> field (elemType is a nested struct).
+func structSliceField(name, jsonName, elemType string) *FieldInfo {
+	return NewFieldInfo(name, jsonName, elemType, "", true, true, false, "")
+}
+
+// extraSpec declares fields to add to existing struct types, and whole new
+// nested types to create, for a single resource.
+type extraSpec struct {
+	// fields[goTypeName] = extra fields to merge into that type.
+	fields map[string][]*FieldInfo
+	// types[goTypeName] = the fields of a brand-new nested type to create.
+	types map[string][]*FieldInfo
+}
+
+// firewallEndpointExtras are shared between FirewallPolicySource and
+// FirewallPolicyDestination, which have identical shapes.
+func firewallEndpointExtras() []*FieldInfo {
+	return []*FieldInfo{
+		strField("IPGroupID", "ip_group_id", "firewall_group ID when matching_target=IP and matching_target_type=OBJECT", true),
+		boolField("MatchOppositeNetworks", "match_opposite_networks"),
+		strSliceField("NetworkIDs", "network_ids", "network IDs when matching_target=NETWORK", true),
+	}
+}
+
+// resourceExtras is keyed by resource StructName.
+var resourceExtras = map[string]extraSpec{
+	"Account": {
+		fields: map[string][]*FieldInfo{
+			"Account": {strField("GroupPolicy", "group_policy", "", true)},
+		},
+	},
+	"Device": {
+		fields: map[string][]*FieldInfo{
+			// Firmware version the controller reports; not in the ace.jar
+			// schema. Read-only, so omitempty keeps it out of update payloads.
+			"Device": {strField("Version", "version", "firmware version reported by the controller", true)},
+		},
+	},
+	"FirewallPolicy": {
+		fields: map[string][]*FieldInfo{
+			"FirewallPolicy": {
+				strField("MatchIPSecType", "match_ip_sec_type", "MATCH_IP_SEC|MATCH_NON_IP_SEC", true),
+				strField("OriginID", "origin_id", "system-set, links the policy back to a UniFi-generated source (e.g. a wifiman rule)", true),
+				strField("OriginType", "origin_type", "system-set, classification of OriginID", true),
+			},
+			"FirewallPolicyDestination": firewallEndpointExtras(),
+			"FirewallPolicySource":      firewallEndpointExtras(),
+			"FirewallPolicySchedule": {
+				strField("DateStart", "date_start", "", true),
+				strField("DateEnd", "date_end", "", true),
+			},
+		},
+	},
+	"SettingIps": {
+		fields: map[string][]*FieldInfo{
+			"SettingIps": {
+				structSliceField("AdBlockingConfigurations", "ad_blocking_configurations", "SettingIpsAdBlocking"),
+				boolField("DnsFiltering", "dns_filtering"),
+				structSliceField("DnsFilters", "dns_filters", "SettingIpsDnsFilter"),
+			},
+		},
+		types: map[string][]*FieldInfo{
+			"SettingIpsAdBlocking": {
+				strField("NetworkID", "network_id", "", true),
+			},
+			"SettingIpsDnsFilter": {
+				strField("Filter", "filter", "none|family|adult|work", true),
+				strField("NetworkID", "network_id", "", true),
+				strField("Name", "name", "", true),
+				strField("Description", "description", "", true),
+				strField("Version", "version", "v4|v6", true),
+				strSliceField("BlockedTLD", "blocked_tld", "", false),
+				strSliceField("BlockedSites", "blocked_sites", "", false),
+				strSliceField("AllowedSites", "allowed_sites", "", false),
+			},
+		},
+	},
+	"SettingMagicSiteToSiteVpn": {
+		fields: map[string][]*FieldInfo{
+			"SettingMagicSiteToSiteVpn": {
+				strField("PublicKey", "public_key", "Controller-generated.", true),
+				strField("XPrivateKey", "x_private_key", "Controller-generated.", true),
+			},
+		},
+	},
+	"SettingMdns": {
+		fields: map[string][]*FieldInfo{
+			"SettingMdns": {
+				strField("EnabledFor", "enabled_for", "all|some|none", true),
+				strSliceField("EnabledForNetworkIDs", "enabled_for_network_ids", "", true),
+			},
+		},
+	},
+	"SettingSslInspection": {
+		fields: map[string][]*FieldInfo{
+			"SettingSslInspection": {boolField("IdentityCertificateAllUsers", "identity_certificate_all_users")},
+		},
+	},
+}
+
+// applyExtraFields merges the resource's declared extra nested types and
+// fields into the type table. Must run after processJSON so that
+// schema-derived nested types (e.g. FirewallPolicySource) already exist.
+func (r *ResourceInfo) applyExtraFields() {
+	spec, ok := resourceExtras[r.StructName]
+	if !ok {
+		return
+	}
+	for typeName, flds := range spec.types {
+		nested := NewFieldInfo(typeName, "", "struct", "", false, false, true, "")
+		nested.Fields = make(map[string]*FieldInfo)
+		for _, f := range flds {
+			nested.Fields[f.FieldName] = f
+		}
+		r.Types[typeName] = nested
+	}
+	for typeName, flds := range spec.fields {
+		t, ok := r.Types[typeName]
+		if !ok {
+			fmt.Printf("warning: extra-field target type %q not found for resource %s\n", typeName, r.StructName)
+			continue
+		}
+		for _, f := range flds {
+			t.Fields[f.FieldName] = f
+		}
+	}
 }
 
 func usage() {
@@ -461,10 +621,26 @@ func main() {
 				case "TxPower", "Channel":
 					// Field within DeviceRadioTable nested type — controller
 					// may send these as either a string ("auto") or a number
-					// (e.g. 18, 6); coerce numeric values back to string.
+					// (e.g. 18, 6); coerce numeric values back to string while
+					// preserving non-numeric strings.
 					if f.FieldType == fields.String {
 						f.CustomUnmarshalType = fields.Number
+						f.StringFromNumber = true
 					}
+				case "AssistedRoamingRssi":
+					// DeviceRadioTable numeric field with a constrained range;
+					// the controller rejects 0, so an empty value must stay nil.
+					f.NoZeroFallback = true
+					f.UnmarshalComment = `Empty string means "unset"; controller rejects 0 (valid range -60..-80).`
+				case "Maxsta":
+					f.NoZeroFallback = true
+					f.UnmarshalComment = `Empty string means "unset"; controller rejects 0 (valid range 1..200).`
+				case "MinRssi":
+					f.NoZeroFallback = true
+					f.UnmarshalComment = `Empty string means "unset"; controller rejects 0 (valid range -67..-90).`
+				case "SensLevel":
+					f.NoZeroFallback = true
+					f.UnmarshalComment = `Empty string means "unset"; controller rejects 0 (valid range -50..-90).`
 				}
 
 				f.OmitEmpty = true
@@ -498,6 +674,20 @@ func main() {
 					switch f.FieldType {
 					case fields.Bool, fields.String:
 						f.IsPointer = true
+					}
+				}
+				return nil
+			}
+		case "SettingGuestAccess":
+			resource.FieldProcessor = func(name string, f *FieldInfo) error {
+				switch name {
+				case "Expire":
+					// Controller serves `expire` as a JSON number (minutes) for
+					// fixed durations or as the literal string "custom"; coerce
+					// both into the declared string field.
+					if f.FieldType == fields.String {
+						f.CustomUnmarshalType = fields.Number
+						f.StringFromNumber = true
 					}
 				}
 				return nil
@@ -559,6 +749,11 @@ func main() {
 				case "LastSeen":
 					f.FieldType = fields.Int
 					f.IsPointer = true
+				case "FixedIP":
+					// No omitempty: an empty value must be sent so clearing
+					// use_fixedip also clears the stored IP (no stale string).
+					f.OmitEmpty = false
+					f.FieldValidation = "no omitempty: an empty value must be sent so clearing use_fixedip also clears the stored IP (no stale string)"
 				}
 				return nil
 			}
@@ -566,8 +761,10 @@ func main() {
 			resource.FieldProcessor = func(name string, f *FieldInfo) error {
 				switch name {
 				case "ScheduleWithDuration":
-					// always send schedule, so we can empty it if we want to
-					f.OmitEmpty = false
+					// Keep omitempty: the UDM-Pro rejects
+					// schedule_with_duration:null with api.err.InvalidPayload
+					// (400) on a wlanconf PUT when no schedule is set.
+					f.OmitEmpty = true
 				}
 				return nil
 			}
@@ -589,6 +786,9 @@ func main() {
 			fmt.Printf("skipping file %s: %s", fieldsFile.Name(), err)
 			continue
 		}
+
+		// Inject fields/types the ace.jar schema doesn't expose (regen-safe).
+		resource.applyExtraFields()
 
 		// Add resource to specification generator
 		specGen.AddResource(resource)

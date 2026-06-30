@@ -38,7 +38,7 @@ type Client struct {
 	Blocked                       *bool    `json:"blocked,omitempty"`
 	FixedApEnabled                bool     `json:"fixed_ap_enabled"`
 	FixedApMAC                    string   `json:"fixed_ap_mac,omitempty"` // ^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$
-	FixedIP                       string   `json:"fixed_ip"` // no omitempty: an empty value must be sent so clearing use_fixedip also clears the stored IP (no stale string)
+	FixedIP                       string   `json:"fixed_ip"`               // no omitempty: an empty value must be sent so clearing use_fixedip also clears the stored IP (no stale string)
 	Hostname                      string   `json:"hostname,omitempty"`
 	LastSeen                      *int64   `json:"last_seen,omitempty"`
 	LocalDNSRecord                string   `json:"local_dns_record,omitempty"`

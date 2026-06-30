@@ -121,6 +121,7 @@ type Device struct {
 	SwitchVLANEnabled           bool                      `json:"switch_vlan_enabled,omitempty"`
 	Type                        string                    `json:"type,omitempty"`
 	UbbPairName                 string                    `json:"ubb_pair_name,omitempty"` // .{1,128}
+	Version                     string                    `json:"version,omitempty"`       // firmware version reported by the controller
 	Volume                      *int64                    `json:"volume,omitempty"`        // [0-9]|[1-9][0-9]|100
 	X                           float64                   `json:"x,omitempty"`
 	Y                           float64                   `json:"y,omitempty"`
@@ -911,10 +912,16 @@ func (dst *DeviceRadioTable) UnmarshalJSON(b []byte) error {
 		}
 	}
 	if aux.AssistedRoamingRssi != nil {
-		// Empty string means "unset"; leave nil so omitempty drops it on round-trip
-		// (controller rejects 0 — valid range is -60..-80).
+		// Empty string means "unset"; controller rejects 0 (valid range -60..-80).
 		if val, err := aux.AssistedRoamingRssi.Int64(); err == nil {
 			dst.AssistedRoamingRssi = &val
+		}
+	}
+	if aux.Channel != nil {
+		if val, err := aux.Channel.Int64(); err == nil {
+			dst.Channel = strconv.FormatInt(val, 10)
+		} else if string(*aux.Channel) != "" {
+			dst.Channel = string(*aux.Channel)
 		}
 	}
 	dst.Ht = types.ToInt64Pointer(aux.Ht)
@@ -934,13 +941,6 @@ func (dst *DeviceRadioTable) UnmarshalJSON(b []byte) error {
 		// Empty string means "unset"; controller rejects 0 (valid range -50..-90).
 		if val, err := aux.SensLevel.Int64(); err == nil {
 			dst.SensLevel = &val
-		}
-	}
-	if aux.Channel != nil {
-		if val, err := aux.Channel.Int64(); err == nil {
-			dst.Channel = strconv.FormatInt(val, 10)
-		} else if string(*aux.Channel) != "" {
-			dst.Channel = string(*aux.Channel)
 		}
 	}
 	if aux.TxPower != nil {

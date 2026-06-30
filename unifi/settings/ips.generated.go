@@ -60,6 +60,26 @@ func (dst *Ips) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type SettingIpsAdBlocking struct {
+	NetworkID string `json:"network_id,omitempty"`
+}
+
+func (dst *SettingIpsAdBlocking) UnmarshalJSON(b []byte) error {
+	type Alias SettingIpsAdBlocking
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(dst),
+	}
+
+	err := json.Unmarshal(b, &aux)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal alias: %w", err)
+	}
+
+	return nil
+}
+
 type SettingIpsAlerts struct {
 	Category  string               `json:"category,omitempty"`
 	Gid       *int64               `json:"gid,omitempty"`
@@ -99,6 +119,33 @@ func (dst *SettingIpsAlerts) UnmarshalJSON(b []byte) error {
 			var zero int64
 			dst.ID = &zero
 		}
+	}
+
+	return nil
+}
+
+type SettingIpsDnsFilter struct {
+	AllowedSites []string `json:"allowed_sites"`
+	BlockedSites []string `json:"blocked_sites"`
+	BlockedTLD   []string `json:"blocked_tld"`
+	Description  string   `json:"description,omitempty"`
+	Filter       string   `json:"filter,omitempty"` // none|family|adult|work
+	Name         string   `json:"name,omitempty"`
+	NetworkID    string   `json:"network_id,omitempty"`
+	Version      string   `json:"version,omitempty"` // v4|v6
+}
+
+func (dst *SettingIpsDnsFilter) UnmarshalJSON(b []byte) error {
+	type Alias SettingIpsDnsFilter
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(dst),
+	}
+
+	err := json.Unmarshal(b, &aux)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal alias: %w", err)
 	}
 
 	return nil
@@ -188,38 +235,5 @@ func (dst *SettingIpsWhitelist) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("unable to unmarshal alias: %w", err)
 	}
 
-	return nil
-}
-
-type SettingIpsAdBlocking struct {
-	NetworkID string `json:"network_id,omitempty"`
-}
-
-func (dst *SettingIpsAdBlocking) UnmarshalJSON(b []byte) error {
-	type Alias SettingIpsAdBlocking
-	aux := &struct{ *Alias }{Alias: (*Alias)(dst)}
-	if err := json.Unmarshal(b, &aux); err != nil {
-		return fmt.Errorf("unable to unmarshal alias: %w", err)
-	}
-	return nil
-}
-
-type SettingIpsDnsFilter struct {
-	Filter        string   `json:"filter,omitempty"` // none|family|adult|work
-	NetworkID     string   `json:"network_id,omitempty"`
-	Name          string   `json:"name,omitempty"`
-	Description   string   `json:"description,omitempty"`
-	Version       string   `json:"version,omitempty"` // v4|v6
-	BlockedTLD    []string `json:"blocked_tld"`
-	BlockedSites  []string `json:"blocked_sites"`
-	AllowedSites  []string `json:"allowed_sites"`
-}
-
-func (dst *SettingIpsDnsFilter) UnmarshalJSON(b []byte) error {
-	type Alias SettingIpsDnsFilter
-	aux := &struct{ *Alias }{Alias: (*Alias)(dst)}
-	if err := json.Unmarshal(b, &aux); err != nil {
-		return fmt.Errorf("unable to unmarshal alias: %w", err)
-	}
 	return nil
 }

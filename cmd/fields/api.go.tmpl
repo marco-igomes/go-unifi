@@ -4,7 +4,7 @@
 	{{ .FieldName }} {{ if .IsArray }}[]{{end}}{{ if and (.OmitEmpty) (.IsPointer) }}*{{ end }}{{ .FieldType }} `json:"{{ .JSONName }}{{ if .OmitEmpty }},omitempty{{ end }}"` {{ if .FieldValidation }}// {{ .FieldValidation }}{{ end }} {{- end }}
 {{ define "field-customUnmarshalType" }}
 	{{- if eq .CustomUnmarshalType "" }}{{else}}
-			{{ .FieldName }} {{ if .IsArray }}[]{{ else }}{{ if and .IsPointer (eq .CustomUnmarshalType "types.Number") }}*{{ end }}{{ end }}{{ .CustomUnmarshalType }} `json:"{{ .JSONName }}"`{{ end }} {{- end }}
+			{{ .FieldName }} {{ if .IsArray }}[]{{ else }}{{ if and (or .IsPointer .StringFromNumber) (eq .CustomUnmarshalType "types.Number") }}*{{ end }}{{ end }}{{ .CustomUnmarshalType }} `json:"{{ .JSONName }}"`{{ end }} {{- end }}
 {{ define "typecast" }}
 	{{- if ne .CustomUnmarshalFunc "" }}
 		dst.{{ .FieldName }}= {{ .CustomUnmarshalFunc }}(aux.{{ .FieldName }})
@@ -22,14 +22,25 @@
 		}
 	}
 			{{- else }}
-				{{- if .IsPointer }}
+				{{- if .StringFromNumber }}
 	if aux.{{ .FieldName }} != nil {
 		if val, err := aux.{{ .FieldName }}.Int64(); err == nil {
+			dst.{{ .FieldName }} = strconv.FormatInt(val, 10)
+		} else if string(*aux.{{ .FieldName }}) != "" {
+			dst.{{ .FieldName }} = string(*aux.{{ .FieldName }})
+		}
+	}
+				{{- else if .IsPointer }}
+	if aux.{{ .FieldName }} != nil {
+		{{- if .UnmarshalComment }}
+		// {{ .UnmarshalComment }}
+		{{- end }}
+		if val, err := aux.{{ .FieldName }}.Int64(); err == nil {
 			dst.{{ .FieldName }} = &val
-		} else if string(*aux.{{ .FieldName }}) == "" {
+		}{{ if not .NoZeroFallback }} else if string(*aux.{{ .FieldName }}) == "" {
 			var zero int64
 			dst.{{ .FieldName }} = &zero
-		}
+		}{{ end }}
 	}
 				{{- else }}
 	if val, err := aux.{{ .FieldName }}.Int64(); err == nil {

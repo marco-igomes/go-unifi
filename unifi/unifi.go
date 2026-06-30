@@ -433,7 +433,7 @@ func (c *ApiClient) setServerVersion(ctx context.Context) (err error) {
 
 	// newer version of 6.0 controller, use sysinfo to determine version
 	// using default site since it must exist
-	si, err := c.sysinfo(ctx, "default")
+	si, err := c.Sysinfo(ctx, "default")
 	if err != nil {
 		return err
 	}
