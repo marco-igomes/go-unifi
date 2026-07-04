@@ -323,6 +323,20 @@ var resourceExtras = map[string]extraSpec{
 			// Firmware version the controller reports; not in the ace.jar
 			// schema. Read-only, so omitempty keeps it out of update payloads.
 			"Device": {strField("Version", "version", "firmware version reported by the controller", true)},
+			// Port Mode fields the controller serves on port overrides but ace.jar omits.
+			"DevicePortOverrides": {
+				strField("StpEdgeState", "stp_edge_state", "Port Mode: 'enabled'=Edge, 'auto'=Uplink; omit for controller default", true),
+				boolField("StpBpduGuardEnabled", "stp_bpdu_guard_enabled"),
+			},
+		},
+	},
+	"PortProfile": {
+		fields: map[string][]*FieldInfo{
+			// Same Port Mode fields on the port-profile template; ace.jar omits them too.
+			"PortProfile": {
+				strField("StpEdgeState", "stp_edge_state", "Port Mode: 'enabled'=Edge, 'auto'=Uplink; omit for controller default", true),
+				boolField("StpBpduGuardEnabled", "stp_bpdu_guard_enabled"),
+			},
 		},
 	},
 	"FirewallPolicy": {
