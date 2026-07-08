@@ -24,8 +24,11 @@ var (
 type Ips struct {
 	BaseSetting
 
+	AdBlockingConfigurations            []SettingIpsAdBlocking `json:"ad_blocking_configurations,omitempty"`
 	AdvancedFilteringPreference         string                 `json:"advanced_filtering_preference,omitempty"` // |manual|disabled
 	ContentFilteringBlockingPageEnabled bool                   `json:"content_filtering_blocking_page_enabled"`
+	DnsFiltering                        bool                   `json:"dns_filtering"`
+	DnsFilters                          []SettingIpsDnsFilter  `json:"dns_filters,omitempty"`
 	EnabledCategories                   []string               `json:"enabled_categories,omitempty"` // emerging-activex|emerging-attackresponse|botcc|emerging-chat|ciarmy|compromised|emerging-dns|emerging-dos|dshield|emerging-exploit|emerging-ftp|emerging-games|emerging-icmp|emerging-icmpinfo|emerging-imap|emerging-inappropriate|emerging-info|emerging-malware|emerging-misc|emerging-mobile|emerging-netbios|emerging-p2p|emerging-policy|emerging-pop3|emerging-rpc|emerging-scada|emerging-scan|emerging-shellcode|emerging-smtp|emerging-snmp|emerging-sql|emerging-telnet|emerging-tftp|tor|emerging-useragent|emerging-voip|emerging-webapps|emerging-webclient|emerging-webserver|emerging-worm|exploit-kit|adware-pup|botcc-portgrouped|phishing|threatview-cs-c2|3coresec|chat|coinminer|current-events|drop|hunting|icmp-info|inappropriate|info|ja3|policy|scada|dark-web-blocker-list|malicious-hosts
 	EnabledNetworks                     []string               `json:"enabled_networks,omitempty"`
 	Honeypot                            []SettingIpsHoneypot   `json:"honeypot,omitempty"`
@@ -47,6 +50,26 @@ func (dst *Ips) UnmarshalJSON(b []byte) error {
 	// First unmarshal base setting
 	if err := json.Unmarshal(b, &dst.BaseSetting); err != nil {
 		return fmt.Errorf("unable to unmarshal base setting: %w", err)
+	}
+
+	err := json.Unmarshal(b, &aux)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal alias: %w", err)
+	}
+
+	return nil
+}
+
+type SettingIpsAdBlocking struct {
+	NetworkID string `json:"network_id,omitempty"`
+}
+
+func (dst *SettingIpsAdBlocking) UnmarshalJSON(b []byte) error {
+	type Alias SettingIpsAdBlocking
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(dst),
 	}
 
 	err := json.Unmarshal(b, &aux)
@@ -96,6 +119,33 @@ func (dst *SettingIpsAlerts) UnmarshalJSON(b []byte) error {
 			var zero int64
 			dst.ID = &zero
 		}
+	}
+
+	return nil
+}
+
+type SettingIpsDnsFilter struct {
+	AllowedSites []string `json:"allowed_sites"`
+	BlockedSites []string `json:"blocked_sites"`
+	BlockedTLD   []string `json:"blocked_tld"`
+	Description  string   `json:"description,omitempty"`
+	Filter       string   `json:"filter,omitempty"` // none|family|adult|work
+	Name         string   `json:"name,omitempty"`
+	NetworkID    string   `json:"network_id,omitempty"`
+	Version      string   `json:"version,omitempty"` // v4|v6
+}
+
+func (dst *SettingIpsDnsFilter) UnmarshalJSON(b []byte) error {
+	type Alias SettingIpsDnsFilter
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(dst),
+	}
+
+	err := json.Unmarshal(b, &aux)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal alias: %w", err)
 	}
 
 	return nil

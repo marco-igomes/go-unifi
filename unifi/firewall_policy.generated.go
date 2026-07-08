@@ -45,8 +45,11 @@ type FirewallPolicy struct {
 	Index                 *int64                     `json:"index,omitempty"`            // [1-9][0-9]+
 	Logging               bool                       `json:"logging"`
 	MatchIPSec            bool                       `json:"match_ip_sec"`
+	MatchIPSecType        string                     `json:"match_ip_sec_type,omitempty"` // MATCH_IP_SEC|MATCH_NON_IP_SEC
 	MatchOppositeProtocol bool                       `json:"match_opposite_protocol"`
 	Name                  string                     `json:"name,omitempty"`
+	OriginID              string                     `json:"origin_id,omitempty"`   // system-set, links the policy back to a UniFi-generated source (e.g. a wifiman rule)
+	OriginType            string                     `json:"origin_type,omitempty"` // system-set, classification of OriginID
 	Predefined            bool                       `json:"predefined"`
 	Protocol              string                     `json:"protocol,omitempty"` // all|tcp|udp|tcp_udp
 	Schedule              *FirewallPolicySchedule    `json:"schedule,omitempty"`
@@ -81,16 +84,19 @@ func (dst *FirewallPolicy) UnmarshalJSON(b []byte) error {
 }
 
 type FirewallPolicyDestination struct {
-	IPs                []string `json:"ips,omitempty"`
-	MatchMAC           bool     `json:"match_mac"`
-	MatchOppositeIPs   bool     `json:"match_opposite_ips"`
-	MatchOppositePorts bool     `json:"match_opposite_ports"`
-	MatchingTarget     string   `json:"matching_target,omitempty"`      // ANY|DEVICE|IP|NETWORK|MAC
-	MatchingTargetType string   `json:"matching_target_type,omitempty"` // ANY|SPECIFIC|LIST|OBJECT
-	Port               *int64   `json:"port,omitempty"`                 // [1-9][0-9]{0,4}
-	PortGroupID        string   `json:"port_group_id,omitempty"`
-	PortMatchingType   string   `json:"port_matching_type,omitempty"` // ANY|SPECIFIC|LIST|OBJECT
-	ZoneID             string   `json:"zone_id,omitempty"`
+	IPGroupID             string   `json:"ip_group_id,omitempty"` // firewall_group ID when matching_target=IP and matching_target_type=OBJECT
+	IPs                   []string `json:"ips,omitempty"`
+	MatchMAC              bool     `json:"match_mac"`
+	MatchOppositeIPs      bool     `json:"match_opposite_ips"`
+	MatchOppositeNetworks bool     `json:"match_opposite_networks"`
+	MatchOppositePorts    bool     `json:"match_opposite_ports"`
+	MatchingTarget        string   `json:"matching_target,omitempty"`      // ANY|DEVICE|IP|NETWORK|MAC
+	MatchingTargetType    string   `json:"matching_target_type,omitempty"` // ANY|SPECIFIC|LIST|OBJECT
+	NetworkIDs            []string `json:"network_ids,omitempty"`          // network IDs when matching_target=NETWORK
+	Port                  *int64   `json:"port,omitempty"`                 // [1-9][0-9]{0,4}
+	PortGroupID           string   `json:"port_group_id,omitempty"`
+	PortMatchingType      string   `json:"port_matching_type,omitempty"` // ANY|SPECIFIC|LIST|OBJECT
+	ZoneID                string   `json:"zone_id,omitempty"`
 }
 
 func (dst *FirewallPolicyDestination) UnmarshalJSON(b []byte) error {
@@ -121,6 +127,8 @@ func (dst *FirewallPolicyDestination) UnmarshalJSON(b []byte) error {
 
 type FirewallPolicySchedule struct {
 	Date           string   `json:"date,omitempty"`
+	DateEnd        string   `json:"date_end,omitempty"`
+	DateStart      string   `json:"date_start,omitempty"`
 	Mode           string   `json:"mode,omitempty"`           // ALWAYS|EVERY_DAY|EVERY_WEEK|ONE_TIME_ONLY
 	RepeatOnDays   []string `json:"repeat_on_days,omitempty"` // mon|tue|wed|thu|fri|sat|sun
 	TimeAllDay     bool     `json:"time_all_day"`
@@ -145,16 +153,19 @@ func (dst *FirewallPolicySchedule) UnmarshalJSON(b []byte) error {
 }
 
 type FirewallPolicySource struct {
-	IPs                []string `json:"ips,omitempty"`
-	MatchMAC           bool     `json:"match_mac"`
-	MatchOppositeIPs   bool     `json:"match_opposite_ips"`
-	MatchOppositePorts bool     `json:"match_opposite_ports"`
-	MatchingTarget     string   `json:"matching_target,omitempty"`      // ANY|DEVICE|IP|NETWORK|MAC
-	MatchingTargetType string   `json:"matching_target_type,omitempty"` // ANY|SPECIFIC|LIST|OBJECT
-	Port               *int64   `json:"port,omitempty"`                 // [1-9][0-9]{0,4}
-	PortGroupID        string   `json:"port_group_id,omitempty"`
-	PortMatchingType   string   `json:"port_matching_type,omitempty"` // ANY|SPECIFIC|LIST|OBJECT
-	ZoneID             string   `json:"zone_id,omitempty"`
+	IPGroupID             string   `json:"ip_group_id,omitempty"` // firewall_group ID when matching_target=IP and matching_target_type=OBJECT
+	IPs                   []string `json:"ips,omitempty"`
+	MatchMAC              bool     `json:"match_mac"`
+	MatchOppositeIPs      bool     `json:"match_opposite_ips"`
+	MatchOppositeNetworks bool     `json:"match_opposite_networks"`
+	MatchOppositePorts    bool     `json:"match_opposite_ports"`
+	MatchingTarget        string   `json:"matching_target,omitempty"`      // ANY|DEVICE|IP|NETWORK|MAC
+	MatchingTargetType    string   `json:"matching_target_type,omitempty"` // ANY|SPECIFIC|LIST|OBJECT
+	NetworkIDs            []string `json:"network_ids,omitempty"`          // network IDs when matching_target=NETWORK
+	Port                  *int64   `json:"port,omitempty"`                 // [1-9][0-9]{0,4}
+	PortGroupID           string   `json:"port_group_id,omitempty"`
+	PortMatchingType      string   `json:"port_matching_type,omitempty"` // ANY|SPECIFIC|LIST|OBJECT
+	ZoneID                string   `json:"zone_id,omitempty"`
 }
 
 func (dst *FirewallPolicySource) UnmarshalJSON(b []byte) error {

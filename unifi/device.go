@@ -239,6 +239,11 @@ func (c *ApiClient) UpdateDevice(ctx context.Context, site string, d *Device) (*
 		return nil, fmt.Errorf("failed to create device diff: %w", err)
 	}
 
+	// Empty-body PUT can return an empty data array; skip to avoid a spurious NotFoundError.
+	if len(patch) == 0 {
+		return existing, nil
+	}
+
 	err = c.do(
 		ctx,
 		"PUT",
@@ -250,8 +255,9 @@ func (c *ApiClient) UpdateDevice(ctx context.Context, site string, d *Device) (*
 		return nil, err
 	}
 
-	if len(respBody.Data) != 1 {
-		return nil, &NotFoundError{}
+	// Some devices (observed on UDM-Pro) return data:[] on a successful PUT; refetch in that case.
+	if len(respBody.Data) == 0 {
+		return c.getDevice(ctx, site, d.MAC)
 	}
 
 	res := respBody.Data[0]
@@ -312,7 +318,8 @@ func getDiff[T any](original, target *T, skipFields ...string) (map[string]any, 
 
 // getDeviceDiff compares two Device objects and returns a map containing only changed fields.
 func getDeviceDiff(original, target *Device) (map[string]any, error) {
-	return getDiff(original, target, "_id", "site_id")
+	// "state" is the controller-managed operational state; PUTting it back rejects with InvalidPayload.
+	return getDiff(original, target, "_id", "site_id", "state")
 }
 
 // deepEqualJSON compares two values for deep equality by comparing their JSON representations.

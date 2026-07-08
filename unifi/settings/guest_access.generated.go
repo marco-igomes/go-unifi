@@ -126,6 +126,7 @@ type GuestAccess struct {
 func (dst *GuestAccess) UnmarshalJSON(b []byte) error {
 	type Alias GuestAccess
 	aux := &struct {
+		Expire                     *types.Number `json:"expire"`
 		ExpireNumber               *types.Number `json:"expire_number"`
 		ExpireUnit                 *types.Number `json:"expire_unit"`
 		PortalCustomizedBoxOpacity *types.Number `json:"portal_customized_box_opacity"`
@@ -146,6 +147,13 @@ func (dst *GuestAccess) UnmarshalJSON(b []byte) error {
 	err := json.Unmarshal(b, &aux)
 	if err != nil {
 		return fmt.Errorf("unable to unmarshal alias: %w", err)
+	}
+	if aux.Expire != nil {
+		if val, err := aux.Expire.Int64(); err == nil {
+			dst.Expire = strconv.FormatInt(val, 10)
+		} else if string(*aux.Expire) != "" {
+			dst.Expire = string(*aux.Expire)
+		}
 	}
 	if aux.ExpireNumber != nil {
 		if val, err := aux.ExpireNumber.Int64(); err == nil {

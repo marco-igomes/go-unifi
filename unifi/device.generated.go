@@ -121,6 +121,7 @@ type Device struct {
 	SwitchVLANEnabled           bool                      `json:"switch_vlan_enabled,omitempty"`
 	Type                        string                    `json:"type,omitempty"`
 	UbbPairName                 string                    `json:"ubb_pair_name,omitempty"` // .{1,128}
+	Version                     string                    `json:"version,omitempty"`       // firmware version reported by the controller
 	Volume                      *int64                    `json:"volume,omitempty"`        // [0-9]|[1-9][0-9]|100
 	X                           float64                   `json:"x,omitempty"`
 	Y                           float64                   `json:"y,omitempty"`
@@ -491,6 +492,8 @@ type DevicePortOverrides struct {
 	StormctrlUcastEnabled        bool              `json:"stormctrl_ucast_enabled,omitempty"`
 	StormctrlUcastLevel          *int64            `json:"stormctrl_ucast_level,omitempty"` // [0-9]|[1-9][0-9]|100
 	StormctrlUcastRate           *int64            `json:"stormctrl_ucast_rate,omitempty"`  // [0-9]|[1-9][0-9]{1,6}|1[0-3][0-9]{6}|14[0-7][0-9]{5}|148[0-7][0-9]{4}|14880000
+	StpBpduGuardEnabled          bool              `json:"stp_bpdu_guard_enabled"`
+	StpEdgeState                 string            `json:"stp_edge_state,omitempty"` // Port Mode: 'enabled'=Edge, 'auto'=Uplink; omit for controller default
 	StpPortMode                  bool              `json:"stp_port_mode,omitempty"`
 	TaggedVLANMgmt               string            `json:"tagged_vlan_mgmt,omitempty"` // auto|block_all|custom
 	VoiceNetworkID               string            `json:"voice_networkconf_id,omitempty"`
@@ -878,10 +881,12 @@ func (dst *DeviceRadioTable) UnmarshalJSON(b []byte) error {
 		AntennaGain         *types.Number `json:"antenna_gain"`
 		AntennaID           *types.Number `json:"antenna_id"`
 		AssistedRoamingRssi *types.Number `json:"assisted_roaming_rssi"`
+		Channel             *types.Number `json:"channel"`
 		Ht                  *types.Number `json:"ht"`
 		Maxsta              *types.Number `json:"maxsta"`
 		MinRssi             *types.Number `json:"min_rssi"`
 		SensLevel           *types.Number `json:"sens_level"`
+		TxPower             *types.Number `json:"tx_power"`
 
 		*Alias
 	}{
@@ -909,36 +914,42 @@ func (dst *DeviceRadioTable) UnmarshalJSON(b []byte) error {
 		}
 	}
 	if aux.AssistedRoamingRssi != nil {
+		// Empty string means "unset"; controller rejects 0 (valid range -60..-80).
 		if val, err := aux.AssistedRoamingRssi.Int64(); err == nil {
 			dst.AssistedRoamingRssi = &val
-		} else if string(*aux.AssistedRoamingRssi) == "" {
-			var zero int64
-			dst.AssistedRoamingRssi = &zero
+		}
+	}
+	if aux.Channel != nil {
+		if val, err := aux.Channel.Int64(); err == nil {
+			dst.Channel = strconv.FormatInt(val, 10)
+		} else if string(*aux.Channel) != "" {
+			dst.Channel = string(*aux.Channel)
 		}
 	}
 	dst.Ht = types.ToInt64Pointer(aux.Ht)
 	if aux.Maxsta != nil {
+		// Empty string means "unset"; controller rejects 0 (valid range 1..200).
 		if val, err := aux.Maxsta.Int64(); err == nil {
 			dst.Maxsta = &val
-		} else if string(*aux.Maxsta) == "" {
-			var zero int64
-			dst.Maxsta = &zero
 		}
 	}
 	if aux.MinRssi != nil {
+		// Empty string means "unset"; controller rejects 0 (valid range -67..-90).
 		if val, err := aux.MinRssi.Int64(); err == nil {
 			dst.MinRssi = &val
-		} else if string(*aux.MinRssi) == "" {
-			var zero int64
-			dst.MinRssi = &zero
 		}
 	}
 	if aux.SensLevel != nil {
+		// Empty string means "unset"; controller rejects 0 (valid range -50..-90).
 		if val, err := aux.SensLevel.Int64(); err == nil {
 			dst.SensLevel = &val
-		} else if string(*aux.SensLevel) == "" {
-			var zero int64
-			dst.SensLevel = &zero
+		}
+	}
+	if aux.TxPower != nil {
+		if val, err := aux.TxPower.Int64(); err == nil {
+			dst.TxPower = strconv.FormatInt(val, 10)
+		} else if string(*aux.TxPower) != "" {
+			dst.TxPower = string(*aux.TxPower)
 		}
 	}
 

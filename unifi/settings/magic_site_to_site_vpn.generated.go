@@ -24,7 +24,9 @@ var (
 type MagicSiteToSiteVpn struct {
 	BaseSetting
 
-	Enabled bool `json:"enabled"`
+	Enabled     bool   `json:"enabled"`
+	PublicKey   string `json:"public_key,omitempty"`    // Controller-generated.
+	XPrivateKey string `json:"x_private_key,omitempty"` // Controller-generated.
 }
 
 func (dst *MagicSiteToSiteVpn) UnmarshalJSON(b []byte) error {

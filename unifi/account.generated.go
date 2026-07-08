@@ -34,6 +34,7 @@ type Account struct {
 	NoEdit   bool   `json:"attr_no_edit,omitempty"`
 
 	FilterIDs        []string `json:"filter_ids,omitempty"`
+	GroupPolicy      string   `json:"group_policy,omitempty"`
 	IP               string   `json:"ip,omitempty"`   // ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$
 	Name             string   `json:"name,omitempty"` // ^[^"' ]+$
 	NetworkID        string   `json:"networkconf_id,omitempty"`

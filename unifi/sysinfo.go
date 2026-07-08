@@ -5,7 +5,10 @@ import (
 	"fmt"
 )
 
-type sysInfo struct {
+// SysInfo holds the subset of the controller's /stat/sysinfo response the SDK
+// exposes — primarily the controller/application version — so callers (e.g. a
+// provider data source) can read it directly.
+type SysInfo struct {
 	Timezone        string `json:"timezone"`
 	Version         string `json:"version"`
 	PreviousVersion string `json:"previous_version"`
@@ -66,10 +69,12 @@ type sysInfo struct {
 	*/
 }
 
-func (c *ApiClient) sysinfo(ctx context.Context, site string) (*sysInfo, error) {
+// Sysinfo fetches the controller's sysinfo for the given site, exposing the
+// controller/application version (and related fields) to external callers.
+func (c *ApiClient) Sysinfo(ctx context.Context, site string) (*SysInfo, error) {
 	var respBody struct {
 		Meta meta      `json:"meta"`
-		Data []sysInfo `json:"data"`
+		Data []SysInfo `json:"data"`
 	}
 
 	err := c.do(ctx, "GET", fmt.Sprintf("api/s/%s/stat/sysinfo", site), nil, &respBody)
